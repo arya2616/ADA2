@@ -1,0 +1,106 @@
+const parcels = [
+  { id: 1, x: 5, y: 2, weight: 10.0, value: 10, deadline: 5 },
+  { id: 2, x: 3, y: 8, weight: 5.0, value: 8, deadline: 3 },
+  { id: 3, x: 7, y: 1, weight: 4.0, value: 6, deadline: 4 },
+  { id: 4, x: 1, y: 5, weight: 7.0, value: 7, deadline: 2 },
+  { id: 5, x: 9, y: 4, weight: 6.0, value: 9, deadline: 6 }
+];
+
+const vehicle = {
+  capacity: 20.0,
+  speed: 40.0
+};
+
+function distance(x1, y1, x2, y2) {
+  return Math.hypot(x2 - x1, y2 - y1);
+}
+
+function runGreedy() {
+  let visited = new Set();
+  let currentX = 0, currentY = 0;
+  let remainingCapacity = vehicle.capacity;
+  let route = [];
+
+  while (true) {
+    let candidates = parcels.filter(p => !visited.has(p.id) && p.weight <= remainingCapacity);
+    if (candidates.length === 0) break;
+
+    let nearest = candidates.reduce((a, b) => {
+      let distA = distance(currentX, currentY, a.x, a.y);
+      let distB = distance(currentX, currentY, b.x, b.y);
+      return distA < distB ? a : b;
+    });
+
+    visited.add(nearest.id);
+    route.push(nearest.id);
+    remainingCapacity -= nearest.weight;
+    currentX = nearest.x;
+    currentY = nearest.y;
+  }
+
+  displayOutput('Greedy Route', route);
+}
+
+function runDP() {
+  const n = parcels.length;
+  const capacity = Math.floor(vehicle.capacity);
+  const dp = Array.from({ length: n + 1 }, () => Array(capacity + 1).fill(0));
+
+  for (let i = 1; i <= n; i++) {
+    for (let w = 0; w <= capacity; w++) {
+      if (parcels[i - 1].weight <= w) {
+        dp[i][w] = Math.max(
+          parcels[i - 1].value + dp[i - 1][Math.floor(w - parcels[i - 1].weight)],
+          dp[i - 1][w]
+        );
+      } else {
+        dp[i][w] = dp[i - 1][w];
+      }
+    }
+  }
+
+  let res = dp[n][capacity];
+  let w = capacity;
+  let selected = [];
+
+  for (let i = n; i > 0 && res > 0; i--) {
+    if (res !== dp[i - 1][w]) {
+      selected.push(parcels[i - 1].id);
+      res -= parcels[i - 1].value;
+      w -= Math.floor(parcels[i - 1].weight);
+    }
+  }
+
+  displayOutput('DP Parcel Selection', selected.reverse());
+}
+
+function runBacktrack() {
+  let minTime = Infinity;
+  let bestRoute = [];
+
+  function backtrack(path, visited, currentX, currentY, currentWeight, currentTime) {
+    if (currentWeight > vehicle.capacity) return;
+
+    if (path.length > 0 && currentTime < minTime) {
+      minTime = currentTime;
+      bestRoute = [...path];
+    }
+
+    for (let p of parcels) {
+      if (!visited.has(p.id)) {
+        visited.add(p.id);
+        let dist = distance(currentX, currentY, p.x, p.y);
+        backtrack([...path, p.id], visited, p.x, p.y, currentWeight + p.weight, currentTime + dist);
+        visited.delete(p.id);
+      }
+    }
+  }
+
+  backtrack([], new Set(), 0, 0, 0, 0);
+  displayOutput('Backtracking Optimal Route', bestRoute, Min Time: ${minTime.toFixed(2)});
+}
+
+function displayOutput(title, data, extra = '') {
+  const outputDiv = document.getElementById('output');
+  outputDiv.innerHTML = <h2>${title}</h2><p>${data.join(' → ')}</p><p>${extra}</p>;
+}
